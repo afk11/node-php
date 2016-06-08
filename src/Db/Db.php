@@ -203,7 +203,7 @@ class Db implements DbInterface
         $this->deleteUtxoStmt = $this->dbh->prepare('DELETE FROM utxo WHERE hashKey = ?');
         $this->deleteUtxoByIdStmt = $this->dbh->prepare('DELETE FROM utxo WHERE id = :id');
         $this->deleteUtxosInView = $this->dbh->prepare('DELETE u FROM utxo u where id in (select id from outpoints)');
-        $this->deleteOutpointsInView = $this->dbh->prepare('DELETE u FROM utxo u where id in (select id from outpoints)');
+        $this->deleteOutpointsInView = $this->dbh->prepare('DELETE FROM outpoints where 1');
 
         $this->dropDatabaseStmt = $this->dbh->prepare('DROP DATABASE ' . $this->database);
         $this->insertToBlockIndexStmt = $this->dbh->prepare('INSERT INTO blockIndex ( hash ) SELECT id FROM headerIndex WHERE hash = :refHash ');
@@ -559,7 +559,7 @@ class Db implements DbInterface
             }
 
             $insertUtxos = $this->dbh->prepare('INSERT INTO utxo (hashKey, value, scriptPubKey) VALUES ' . implode(', ', $utxoQuery));
-            var_dump($insertUtxos->execute($utxoValues));
+            $insertUtxos->execute($utxoValues);
         }
     }
 
@@ -986,7 +986,7 @@ WHERE tip.header_id = (
                 $queryValues['key' . $c] = $outpointSerializer->serialize($outpoint)->getBinary();
                 $queryBind[] = ":key{$c}";
             }
-            
+
             $sql = "INSERT INTO outpoints (id, hashKey) SELECT id, hashKey FROM utxo WHERE hashKey IN (" . implode(", ", $queryBind) . ")";
             $statement = $this->dbh->prepare($sql);
             $statement->execute($queryValues);
