@@ -547,12 +547,6 @@ class Db implements DbInterface
     {
         $deleteUtxos = false;
         $useAppendList = false;
-        if (true === $useAppendList) {
-            if (false === empty($specificDeletes)) {
-                $deleteUtxos = true;
-                $this->appendUtxoViewKeys($specificDeletes);
-            }
-        }
 
         if (!$deleteUtxos && count($deleteOutPoints) > 0) {
             $deleteUtxos = true;
@@ -999,16 +993,28 @@ WHERE tip.header_id = (
             return [];
         }
 
-        $this->truncateOutpointsStmt->execute();
-
         $t1 = microtime(true);
+        if (true) {
+            $queryValues = [];
+            $queryBind = [];
+            foreach ($outpoints as $c => $outpoint) {
+                $queryValues['key' . $c] = $outpoint;
+                $queryBind[] = "':key{$c}'";
+            }
+            $sql = "SELECT * FROM utxo WHERE hashKey IN " . implode("  ", $queryBind);
+            $statement = $this->dbh->prepare($sql);
+            $statement->execute($queryValues);
 
-        $iv = [];
-        $i = $this->dbh->prepare($this->createInsertJoinSql($outpointSerializer, $outpoints, $iv));
-        $i->execute($iv);
+            $rows = $this->selectUtxosByOutpointsStmt->fetchAll(\PDO::FETCH_ASSOC);
+        } else {
+            $this->truncateOutpointsStmt->execute();
+            $iv = [];
+            $i = $this->dbh->prepare($this->createInsertJoinSql($outpointSerializer, $outpoints, $iv));
+            $i->execute($iv);
 
-        $this->selectUtxosByOutpointsStmt->execute();
-        $rows = $this->selectUtxosByOutpointsStmt->fetchAll(\PDO::FETCH_ASSOC);
+            $this->selectUtxosByOutpointsStmt->execute();
+            $rows = $this->selectUtxosByOutpointsStmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
 
         $outputSet = [];
         foreach ($rows as $utxo) {

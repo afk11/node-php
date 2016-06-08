@@ -7,7 +7,7 @@ use BitWasp\Bitcoin\Block\BlockInterface;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Adapter\EcAdapterInterface;
 use BitWasp\Bitcoin\Crypto\Hash;
 use BitWasp\Bitcoin\Node\Chain\BlockIndexInterface;
-use BitWasp\Bitcoin\Node\Chain\CachingUtxoSet;
+use BitWasp\Bitcoin\Node\Chain\UtxoSet;
 use BitWasp\Bitcoin\Node\Chain\ChainsInterface;
 use BitWasp\Bitcoin\Node\Chain\UtxoView;
 use BitWasp\Bitcoin\Node\Consensus;
@@ -70,7 +70,7 @@ class Blocks extends EventEmitter
     private $consensus;
 
     /**
-     * @var CachingUtxoSet
+     * @var UtxoSet
      */
     private $utxoSet;
 
@@ -176,12 +176,12 @@ class Blocks extends EventEmitter
     }
 
     /**
-     * @return CachingUtxoSet
+     * @return UtxoSet
      */
     private function fetchUtxoSet()
     {
         if (null === $this->utxoSet) {
-            $this->utxoSet = new CachingUtxoSet($this->db);
+            $this->utxoSet = new UtxoSet($this->db);
         }
 
         return $this->utxoSet;
@@ -198,16 +198,15 @@ class Blocks extends EventEmitter
 
         try {
             echo "Utxoset - fetch view\n";
-            $utxoSet = $this->fetchUtxoSet();
-            $remaining = $utxoSet->fetchView($blockData->requiredOutpoints);
+            $remaining = $this->fetchUtxoSet()->fetchView($blockData->requiredOutpoints);
+            $blockData->utxoView = new UtxoView(array_merge($remaining, $blockData->parsedUtxos));
+            return $blockData;
+
         } catch (\Exception $e) {
             echo $e->getMessage().PHP_EOL;
             echo $e->getTraceAsString().PHP_EOL;
             die();
         }
-
-        $blockData->utxoView = new UtxoView(array_merge($remaining, $blockData->parsedUtxos));
-        return $blockData;
     }
 
     /**
