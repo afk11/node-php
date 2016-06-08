@@ -3,15 +3,10 @@
 namespace BitWasp\Bitcoin\Node\Chain;
 
 use BitWasp\Bitcoin\Node\Db\DbInterface;
-use BitWasp\Bitcoin\Script\Script;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializer;
 use BitWasp\Bitcoin\Transaction\OutPointInterface;
-use BitWasp\Bitcoin\Transaction\TransactionOutput;
 use BitWasp\Bitcoin\Utxo\Utxo;
 use BitWasp\Bitcoin\Utxo\UtxoInterface;
-use BitWasp\Buffertools\Buffer;
-use Doctrine\Common\Cache\ArrayCache;
-use Doctrine\Common\Cache\RedisCache;
 
 class UtxoSet
 {
@@ -19,21 +14,6 @@ class UtxoSet
      * @var DbInterface
      */
     private $db;
-
-    /**
-     * @var bool
-     */
-    private $caching = false;
-
-    /**
-     * @var RedisCache
-     */
-    private $set;
-
-    /**
-     * @var array
-     */
-    private $cacheHits = [];
 
     /**
      * @var OutPointSerializer
@@ -56,7 +36,7 @@ class UtxoSet
      */
     public function applyBlock(array $deleteOutPoints, array $newUtxos)
     {
-        $this->db->updateUtxoSet($this->outpointSerializer, $deleteOutPoints, $newUtxos, $this->cacheHits);
+        $this->db->updateUtxoSet($this->outpointSerializer, $deleteOutPoints, $newUtxos);
     }
 
     /**
@@ -66,13 +46,14 @@ class UtxoSet
     public function fetchView(array $required)
     {
         try {
-            $utxos = [];
-            if (empty($required) === false) {
-                $utxos = $this->db->fetchUtxoDbList($this->outpointSerializer, $required);
-            }
+            
+            $utxos = $this->db->fetchUtxoDbList($this->outpointSerializer, $required);
+            
 
             return $utxos;
         } catch (\Exception $e) {
+            echo "Internal: ".$e->getMessage().PHP_EOL;
+            
             throw new \RuntimeException('Failed to find UTXOS in set');
         }
     }

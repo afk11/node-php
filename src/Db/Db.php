@@ -112,14 +112,22 @@ class Db implements DbInterface
      * @var \PDOStatement
      */
     private $deleteUtxoStmt;
+
     /**
      * @var \PDOStatement
      */
     private $deleteUtxosInView;
+
+    /**
+     * @var \PDOStatement
+     */
+    private $deleteOutpointsInView;
+
     /**
      * @var \PDOStatement
      */
     private $deleteUtxoByIdStmt;
+
     /**
      * @var \PDOStatement
      */
@@ -194,7 +202,8 @@ class Db implements DbInterface
             ');
         $this->deleteUtxoStmt = $this->dbh->prepare('DELETE FROM utxo WHERE hashKey = ?');
         $this->deleteUtxoByIdStmt = $this->dbh->prepare('DELETE FROM utxo WHERE id = :id');
-        $this->deleteUtxosInView = $this->dbh->prepare('DELETE u FROM outpoints o join utxo u on (o.hashKey = u.hashKey)');
+        $this->deleteUtxosInView = $this->dbh->prepare('DELETE u FROM utxo u where id in (select id from outpoints)');
+        $this->deleteOutpointsInView = $this->dbh->prepare('DELETE u FROM utxo u where id in (select id from outpoints)');
 
         $this->dropDatabaseStmt = $this->dbh->prepare('DROP DATABASE ' . $this->database);
         $this->insertToBlockIndexStmt = $this->dbh->prepare('INSERT INTO blockIndex ( hash ) SELECT id FROM headerIndex WHERE hash = :refHash ');
@@ -522,31 +531,13 @@ class Db implements DbInterface
     }
 
     /**
-     * @param array $cacheHits
-     */
-    public function appendUtxoViewKeys(array $cacheHits)
-    {
-        $joinList = [];
-        $queryValues = [];
-        foreach ($cacheHits as $i => $key) {
-            $queryValues[] = $key;
-            $joinList[] = "(?)";
-        }
-
-        $append = $this->dbh->prepare("INSERT INTO outpoints (hashKey) VALUES " . implode(", ", $joinList));
-        $append->execute($queryValues);
-    }
-
-    /**
      * @param OutPointSerializer $serializer
      * @param array $deleteOutPoints
      * @param array $newUtxos
-     * @param array $specificDeletes
      */
-    public function updateUtxoSet(OutPointSerializer $serializer, array $deleteOutPoints, array $newUtxos, array $specificDeletes = [])
+    public function updateUtxoSet(OutPointSerializer $serializer, array $deleteOutPoints, array $newUtxos)
     {
         $deleteUtxos = false;
-        $useAppendList = false;
 
         if (!$deleteUtxos && count($deleteOutPoints) > 0) {
             $deleteUtxos = true;
@@ -554,14 +545,7 @@ class Db implements DbInterface
 
         if (true === $deleteUtxos) {
             $this->deleteUtxosInView->execute();
-        }
-
-        if (false === $useAppendList) {
-            if (count($specificDeletes) > 0) {
-                foreach ($specificDeletes as $delete) {
-                    $this->deleteUtxoStmt->execute([$delete]);
-                }
-            }
+            $this->deleteOutpointsInView->execute();
         }
 
         if (count($newUtxos) > 0) {
@@ -575,7 +559,7 @@ class Db implements DbInterface
             }
 
             $insertUtxos = $this->dbh->prepare('INSERT INTO utxo (hashKey, value, scriptPubKey) VALUES ' . implode(', ', $utxoQuery));
-            $insertUtxos->execute($utxoValues);
+            var_dump($insertUtxos->execute($utxoValues));
         }
     }
 
@@ -1000,13 +984,17 @@ WHERE tip.header_id = (
 
             foreach ($outpoints as $c => $outpoint) {
                 $queryValues['key' . $c] = $outpointSerializer->serialize($outpoint)->getBinary();
-                $queryBind[] = "':key{$c}'";
+                $queryBind[] = ":key{$c}";
             }
-            $sql = "SELECT * FROM utxo WHERE hashKey IN " . implode("  ", $queryBind);
+            
+            $sql = "INSERT INTO outpoints (id, hashKey) SELECT id, hashKey FROM utxo WHERE hashKey IN (" . implode(", ", $queryBind) . ")";
             $statement = $this->dbh->prepare($sql);
             $statement->execute($queryValues);
 
-            $rows = $this->selectUtxosByOutpointsStmt->fetchAll(\PDO::FETCH_ASSOC);
+            $fetch = "SELECT * FROM utxo u join outpoints o on (o.hashKey = u.hashKey)";
+            $statement = $this->dbh->prepare($fetch);
+            $statement->execute();
+            $rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
         } else {
             $this->truncateOutpointsStmt->execute();
             $iv = [];
