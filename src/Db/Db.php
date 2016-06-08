@@ -997,8 +997,9 @@ WHERE tip.header_id = (
         if (true) {
             $queryValues = [];
             $queryBind = [];
+
             foreach ($outpoints as $c => $outpoint) {
-                $queryValues['key' . $c] = $outpointSerializer->serialize($outpoint);
+                $queryValues['key' . $c] = $outpointSerializer->serialize($outpoint)->getBinary();
                 $queryBind[] = "':key{$c}'";
             }
             $sql = "SELECT * FROM utxo WHERE hashKey IN " . implode("  ", $queryBind);
