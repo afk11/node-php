@@ -901,9 +901,7 @@ WHERE tip.header_id = (
         if (0 === count($outpoints)) {
             return [];
         }
-
-        $t1 = microtime(true);
-
+        
         $values = [];
         $query = $this->dbh->prepare($this->selectUtxoByOutpoint($outpointSerializer, $outpoints, $values));
         $query->execute($values);
@@ -920,7 +918,6 @@ WHERE tip.header_id = (
             throw new \RuntimeException('Less than (' . count($outputSet) . ') required amount (' . $requiredCount . ')returned');
         }
 
-        echo "Loading UTXOs (".count($outpoints).") took " . (microtime(true) - $t1) . " seconds\n";
         return $outputSet;
     }
 
