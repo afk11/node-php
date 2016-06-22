@@ -871,7 +871,7 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param CachingOutPointSerializer $serializer
+     * @param OutPointSerializerInterface $serializer
      * @param array $outpoints
      * @param array $values
      * @return string
@@ -901,14 +901,22 @@ WHERE tip.header_id = (
         }
 
         $values = [];
-        $query = $this->dbh->prepare($this->selectUtxoByOutpoint($outpointSerializer, $outpoints, $values));
-        $query->execute($values);
+        $list = [];
+        $map = [];
+        foreach ($outpoints as $v => $outpoint) {
+            $serialized = $outpointSerializer->serialize($outpoint);
+            $values[] = $serialized->getBinary();
+            $map[$serialized->getBinary()] = $outpoint;
+            $list[] = "SELECT * from utxo where hashKey = ?";
+        }
 
+        $query = $this->dbh->prepare(implode(" UNION ", $list));
+        $query->execute($values);
         $rows = $query->fetchAll(\PDO::FETCH_ASSOC);
 
         $outputSet = [];
         foreach ($rows as $utxo) {
-            $outpoint = $outpointSerializer->parse(new Buffer($utxo['hashKey']));
+            $outpoint = $map[$utxo['hashKey']];
             $outputSet[] = new DbUtxo($utxo['id'], $outpoint, new TransactionOutput($utxo['value'], new Script(new Buffer($utxo['scriptPubKey']))));
         }
 
