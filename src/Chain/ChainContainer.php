@@ -338,7 +338,6 @@ class ChainContainer extends EventEmitter implements ChainsInterface
      */
     public function hasBlockTip(BlockHeaderInterface $header)
     {
-        echo "CheckHashBlockTip - " . count($this->segments) . PHP_EOL;
         foreach ($this->segments as $segment) {
             /** @var BlockIndexInterface $segBlock */
             $segBlock = $this->segmentBlock->offsetGet($segment);
