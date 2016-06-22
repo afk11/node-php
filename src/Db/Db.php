@@ -30,7 +30,6 @@ use BitWasp\Bitcoin\Transaction\Transaction;
 use BitWasp\Bitcoin\Transaction\TransactionInput;
 use BitWasp\Bitcoin\Transaction\TransactionInterface;
 use BitWasp\Bitcoin\Transaction\TransactionOutput;
-use BitWasp\Bitcoin\Utxo\Utxo;
 use BitWasp\Buffertools\Buffer;
 use BitWasp\Buffertools\BufferInterface;
 use Packaged\Config\ConfigProviderInterface;
@@ -872,12 +871,12 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $serializer
+     * @param CachingOutPointSerializer $serializer
      * @param array $outpoints
      * @param array $values
      * @return string
      */
-    public function selectUtxoByOutpoint(OutPointSerializerInterface $serializer, array $outpoints, array & $values)
+    public function selectUtxoByOutpoint(CachingOutPointSerializer $serializer, array $outpoints, array & $values)
     {
         $list = [];
         foreach ($outpoints as $v => $outpoint) {
@@ -900,8 +899,6 @@ WHERE tip.header_id = (
         if (0 === count($outpoints)) {
             return [];
         }
-
-        $t1 = microtime(true);
 
         $values = [];
         $query = $this->dbh->prepare($this->selectUtxoByOutpoint($outpointSerializer, $outpoints, $values));
