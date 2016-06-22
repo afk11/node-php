@@ -19,6 +19,7 @@ use BitWasp\Bitcoin\Node\Chain\DbUtxo;
 use BitWasp\Bitcoin\Node\HashStorage;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\HeadersBatch;
+use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Script\Script;
 use BitWasp\Bitcoin\Serializer\Block\BlockSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
@@ -889,11 +890,11 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $outpointSerializer
+     * @param CachingOutPointSerializer $outpointSerializer
      * @param OutPointInterface[] $outpoints
      * @return \BitWasp\Bitcoin\Utxo\Utxo[]
      */
-    public function fetchUtxoDbList(OutPointSerializerInterface $outpointSerializer, array $outpoints)
+    public function fetchUtxoDbList(CachingOutPointSerializer $outpointSerializer, array $outpoints)
     {
         $requiredCount = count($outpoints);
         if (0 === count($outpoints)) {
@@ -922,10 +923,10 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $serializer
+     * @param CachingOutPointSerializer $serializer
      * @param array $utxos
      */
-    private function insertUtxosToTable(OutPointSerializerInterface $serializer, array $utxos)
+    private function insertUtxosToTable(CachingOutPointSerializer $serializer, array $utxos)
     {
         $utxoQuery = [];
         $utxoValues = [];
@@ -941,12 +942,12 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $serializer
+     * @param CachingOutPointSerializer $serializer
      * @param array $outpoints
      * @param array $values
      * @return string
      */
-    public function deleteUtxosByOutpoint(OutPointSerializerInterface $serializer, array $outpoints, array & $values)
+    public function deleteUtxosByOutpoint(CachingOutPointSerializer $serializer, array $outpoints, array & $values)
     {
         $list = [];
         foreach ($outpoints as $i => $outpoint) {
@@ -960,7 +961,6 @@ WHERE tip.header_id = (
 
 
     /**
-     * @param OutPointSerializerInterface $serializer
      * @param DbUtxo[] $utxos
      * @param array $values
      * @return string
@@ -978,14 +978,13 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $outSer
+     * @param CachingOutPointSerializer $outSer
      * @param BlockData $blockData
      */
-    public function updateUtxoSet(OutPointSerializerInterface $outSer, BlockData $blockData)
+    public function updateUtxoSet(CachingOutPointSerializer $outSer, BlockData $blockData)
     {
         if (!empty($blockData->requiredOutpoints)) {
             $deleteValues = [];
-            //$delete = $this->dbh->prepare($this->deleteUtxosByOutpoint($serializer, $deleteOutPoints, $deleteValues));
             $utxos = [];
             foreach ($blockData->requiredOutpoints as $outpoint) {
                 $utxos[] = $blockData->utxoView->fetch($outpoint);
