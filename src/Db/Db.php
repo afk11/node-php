@@ -30,7 +30,6 @@ use BitWasp\Bitcoin\Transaction\Transaction;
 use BitWasp\Bitcoin\Transaction\TransactionInput;
 use BitWasp\Bitcoin\Transaction\TransactionInterface;
 use BitWasp\Bitcoin\Transaction\TransactionOutput;
-use BitWasp\Bitcoin\Utxo\Utxo;
 use BitWasp\Buffertools\Buffer;
 use BitWasp\Buffertools\BufferInterface;
 use Packaged\Config\ConfigProviderInterface;
@@ -958,9 +957,7 @@ WHERE tip.header_id = (
         return $query;
     }
 
-
     /**
-     * @param OutPointSerializerInterface $serializer
      * @param DbUtxo[] $utxos
      * @param array $values
      * @return string
@@ -985,7 +982,6 @@ WHERE tip.header_id = (
     {
         if (!empty($blockData->requiredOutpoints)) {
             $deleteValues = [];
-            //$delete = $this->dbh->prepare($this->deleteUtxosByOutpoint($serializer, $deleteOutPoints, $deleteValues));
             $utxos = [];
             foreach ($blockData->requiredOutpoints as $outpoint) {
                 $utxos[] = $blockData->utxoView->fetch($outpoint);

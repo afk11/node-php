@@ -15,9 +15,10 @@ class CachingOutPointSerializer implements OutPointSerializerInterface
      * @var OutPointSerializer
      */
     private $serializer;
-    private $parse = 0;
+    private $serializeCache = 0;
     private $serialize = 0;
-    private $cached = 0;
+    private $parse = 0;
+    private $parseCache = 0;
     /**
      * @var \SplObjectStorage
      */
@@ -35,7 +36,7 @@ class CachingOutPointSerializer implements OutPointSerializerInterface
     public function stats()
     {
         return [
-            'cached' => $this->cached, 'serialize' => $this->serialize, 'parse' => $this->parse 
+            'serializeCache' => $this->serializeCache, 'serialize' => $this->serialize, 'parseCache' => $this->parseCache, 'parse' => $this->parse
         ];
     }
     /**
@@ -45,7 +46,7 @@ class CachingOutPointSerializer implements OutPointSerializerInterface
     public function serialize(OutPointInterface $outpoint)
     {
         if (isset($this->cachedObj[$outpoint])) {
-            $this->cached++;
+            $this->serializeCache++;
             return $this->cachedObj[$outpoint];
         }
 
@@ -75,7 +76,7 @@ class CachingOutPointSerializer implements OutPointSerializerInterface
         if ($buffer->getSize() >= 36) {
             $buffer = $buffer->slice(0, 36);
             if (isset($this->cachedStr[$buffer->getBinary()])) {
-                $this->cached++;
+                $this->parseCache++;
                 return $this->cachedStr[$buffer->getBinary()];
             }
         }
