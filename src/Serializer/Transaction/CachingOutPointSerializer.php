@@ -72,7 +72,7 @@ class CachingOutPointSerializer implements OutPointSerializerInterface
     public function fromParser(Parser $parser)
     {
         $buffer = $parser->getBuffer();
-        if ($buffer->getSize() > 36) {
+        if ($buffer->getSize() >= 36) {
             $buffer = $buffer->slice(0, 36);
             if (isset($this->cachedStr[$buffer->getBinary()])) {
                 $this->cached++;

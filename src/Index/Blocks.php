@@ -25,6 +25,7 @@ use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingTransactionSerializer;
 use BitWasp\Bitcoin\Script\Interpreter\InterpreterInterface;
 use BitWasp\Bitcoin\Serializer\Block\BlockHeaderSerializer;
 use BitWasp\Bitcoin\Serializer\Block\BlockSerializer;
+use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionInputSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializerInterface;
@@ -126,13 +127,13 @@ class Blocks extends EventEmitter
      * @param TransactionSerializerInterface $txSerializer
      * @return BlockData
      */
-    public function parseUtxos(BlockInterface $block, TransactionSerializerInterface $txSerializer)
+    public function parseUtxos(BlockInterface $block, CachingOutPointSerializer $outSer, TransactionSerializerInterface $txSerializer)
     {
         $blockData = new BlockData();
         $unknown = [];
         $hashStorage = new HashStorage();
 
-        // Record every Outpoint required for the block.
+        // Record every outpoint as unknown (we don't have the script)
         foreach ($block->getTransactions() as $t => $tx) {
             if ($tx->isCoinbase()) {
                 continue;
@@ -140,7 +141,7 @@ class Blocks extends EventEmitter
 
             foreach ($tx->getInputs() as $in) {
                 $outpoint = $in->getOutPoint();
-                $unknown[$outpoint->getTxId()->getBinary() . $outpoint->getVout()] = $outpoint;
+                $unknown[$outSer->serialize($outpoint)->getBinary()] = $outpoint;
             }
         }
 
@@ -151,14 +152,15 @@ class Blocks extends EventEmitter
             $hashStorage->attach($tx, $hash);
             $hashBin = $hash->getBinary();
             foreach ($tx->getOutputs() as $i => $out) {
-                $lookup = $hashBin . $i;
+
+                $lookup = $hashBin . pack("N", $i);
                 if (isset($unknown[$lookup])) {
-                    // Remove unknown outpoints which consume this output
+                    // We have the script for this outpoint, therefore don't need to search the DB.
                     $outpoint = $unknown[$lookup];
                     $utxo = new Utxo($outpoint, $out);
                     unset($unknown[$lookup]);
                 } else {
-                    // Record new utxos which are not consumed in the same block
+                    // A remaining UTXO must be added to the UTXO set. 
                     $utxo = new Utxo(new OutPoint($hash, $i), $out);
                     $blockData->remainingNew[] = $utxo;
                 }
@@ -179,9 +181,9 @@ class Blocks extends EventEmitter
      * @param UtxoSet $utxoSet
      * @return BlockData
      */
-    public function prepareBatch(BlockInterface $block, TransactionSerializerInterface $txSerializer, UtxoSet $utxoSet)
+    public function prepareBatch(BlockInterface $block, CachingOutPointSerializer $outSer, TransactionSerializerInterface $txSerializer, UtxoSet $utxoSet)
     {
-        $blockData = $this->parseUtxos($block, $txSerializer);
+        $blockData = $this->parseUtxos($block, $outSer, $txSerializer);
         $blockData->utxoView = new UtxoView(array_merge(
             $utxoSet->fetchView($blockData->requiredOutpoints),
             $blockData->parsedUtxos
@@ -263,7 +265,7 @@ class Blocks extends EventEmitter
         $blockSerializer = new CachingBlockSerializer($this->math, new BlockHeaderSerializer(), $txSerializer);
 
         $utxoSet = new UtxoSet($this->db, $outpointSerializer);
-        $blockData = $this->prepareBatch($block, $txSerializer, $utxoSet);
+        $blockData = $this->prepareBatch($block, $outpointSerializer, $txSerializer, $utxoSet);
 
         $this
             ->blockCheck
