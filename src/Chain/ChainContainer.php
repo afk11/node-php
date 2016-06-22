@@ -330,8 +330,7 @@ class ChainContainer extends EventEmitter implements ChainsInterface
 
         return false;
     }
-
-
+    
     /**
      * @param BlockHeaderInterface $header
      * @return BlockIndexInterface|bool
