@@ -123,10 +123,11 @@ class Blocks extends EventEmitter
 
     /**
      * @param BlockInterface $block
+     * @param CachingOutPointSerializer $outSer
      * @param TransactionSerializerInterface $txSerializer
      * @return BlockData
      */
-    public function parseUtxos(BlockInterface $block, TransactionSerializerInterface $txSerializer)
+    public function parseUtxos(BlockInterface $block, CachingOutPointSerializer $outSer, TransactionSerializerInterface $txSerializer)
     {
         $blockData = new BlockData();
         $unknown = [];
@@ -140,7 +141,7 @@ class Blocks extends EventEmitter
 
             foreach ($tx->getInputs() as $in) {
                 $outpoint = $in->getOutPoint();
-                $unknown[$outpoint->getTxId()->getBinary() . $outpoint->getVout()] = $outpoint;
+                $unknown[$outSer->serialize($outpoint)->getBinary()] = $outpoint;
             }
         }
 
@@ -151,11 +152,10 @@ class Blocks extends EventEmitter
             $hashStorage->attach($tx, $hash);
             $hashBin = $hash->getBinary();
             foreach ($tx->getOutputs() as $i => $out) {
-                $lookup = $hashBin . $i;
+                $lookup = $hashBin . pack("V", $i);
                 if (isset($unknown[$lookup])) {
                     // Remove unknown outpoints which consume this output
-                    $outpoint = $unknown[$lookup];
-                    $utxo = new Utxo($outpoint, $out);
+                    $utxo = new Utxo($unknown[$lookup], $out);
                     unset($unknown[$lookup]);
                 } else {
                     // Record new utxos which are not consumed in the same block
@@ -175,13 +175,14 @@ class Blocks extends EventEmitter
 
     /**
      * @param BlockInterface $block
+     * @param CachingOutPointSerializer $outSer
      * @param TransactionSerializerInterface $txSerializer
      * @param UtxoSet $utxoSet
      * @return BlockData
      */
-    public function prepareBatch(BlockInterface $block, TransactionSerializerInterface $txSerializer, UtxoSet $utxoSet)
+    public function prepareBatch(BlockInterface $block, CachingOutPointSerializer $outSer, TransactionSerializerInterface $txSerializer, UtxoSet $utxoSet)
     {
-        $blockData = $this->parseUtxos($block, $txSerializer);
+        $blockData = $this->parseUtxos($block, $outSer, $txSerializer);
         $blockData->utxoView = new UtxoView(array_merge(
             $utxoSet->fetchView($blockData->requiredOutpoints),
             $blockData->parsedUtxos
@@ -263,7 +264,7 @@ class Blocks extends EventEmitter
         $blockSerializer = new CachingBlockSerializer($this->math, new BlockHeaderSerializer(), $txSerializer);
 
         $utxoSet = new UtxoSet($this->db, $outpointSerializer);
-        $blockData = $this->prepareBatch($block, $txSerializer, $utxoSet);
+        $blockData = $this->prepareBatch($block, $outpointSerializer, $txSerializer, $utxoSet);
 
         $this
             ->blockCheck

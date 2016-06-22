@@ -4,6 +4,7 @@ namespace BitWasp\Bitcoin\Node\Chain;
 
 use BitWasp\Bitcoin\Node\Db\DbInterface;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
+use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
 use BitWasp\Bitcoin\Transaction\OutPointInterface;
 use BitWasp\Bitcoin\Utxo\UtxoInterface;
@@ -23,9 +24,9 @@ class UtxoSet
     /**
      * UtxoSet constructor.
      * @param DbInterface $db
-     * @param OutPointSerializerInterface $outpointSerializer
+     * @param CachingOutPointSerializer $outpointSerializer
      */
-    public function __construct(DbInterface $db, OutPointSerializerInterface $outpointSerializer)
+    public function __construct(DbInterface $db, CachingOutPointSerializer $outpointSerializer)
     {
         $this->db = $db;
         $this->outpointSerializer = $outpointSerializer;

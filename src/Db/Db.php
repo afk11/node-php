@@ -19,6 +19,7 @@ use BitWasp\Bitcoin\Node\Chain\DbUtxo;
 use BitWasp\Bitcoin\Node\HashStorage;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\HeadersBatch;
+use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Script\Script;
 use BitWasp\Bitcoin\Serializer\Block\BlockSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
@@ -891,11 +892,11 @@ WHERE tip.header_id = (
     }
 
     /**
-     * @param OutPointSerializerInterface $outpointSerializer
+     * @param CachingOutPointSerializer $outpointSerializer
      * @param OutPointInterface[] $outpoints
      * @return \BitWasp\Bitcoin\Utxo\Utxo[]
      */
-    public function fetchUtxoDbList(OutPointSerializerInterface $outpointSerializer, array $outpoints)
+    public function fetchUtxoDbList(CachingOutPointSerializer $outpointSerializer, array $outpoints)
     {
         $requiredCount = count($outpoints);
         if (0 === count($outpoints)) {
@@ -905,12 +906,11 @@ WHERE tip.header_id = (
         $values = [];
         $query = $this->dbh->prepare($this->selectUtxoByOutpoint($outpointSerializer, $outpoints, $values));
         $query->execute($values);
-
         $rows = $query->fetchAll(\PDO::FETCH_ASSOC);
 
         $outputSet = [];
         foreach ($rows as $utxo) {
-            $outpoint = $outpointSerializer->parse(new Buffer($utxo['hashKey']));
+            $outpoint = $outpointSerializer->parse(new Buffer($utxo['hashKey'], 36));
             $outputSet[] = new DbUtxo($utxo['id'], $outpoint, new TransactionOutput($utxo['value'], new Script(new Buffer($utxo['scriptPubKey']))));
         }
 

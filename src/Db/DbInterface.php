@@ -12,6 +12,7 @@ use BitWasp\Bitcoin\Node\Chain\ChainViewInterface;
 use BitWasp\Bitcoin\Node\HashStorage;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\HeadersBatch;
+use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Serializer\Block\BlockSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
 use BitWasp\Bitcoin\Transaction\OutPointInterface;
@@ -103,11 +104,11 @@ interface DbInterface
     public function getTransaction(BufferInterface $tipHash, BufferInterface $txid);
 
     /**
-     * @param OutPointSerializerInterface $outpointSerializer
+     * @param CachingOutPointSerializer $outpointSerializer
      * @param OutPointInterface[] $outpoints
      * @return \BitWasp\Bitcoin\Utxo\Utxo[]
      */
-    public function fetchUtxoDbList(OutPointSerializerInterface $outpointSerializer, array $outpoints);
+    public function fetchUtxoDbList(CachingOutPointSerializer $outpointSerializer, array $outpoints);
 
     /**
      * @return ChainSegment[]
