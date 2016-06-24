@@ -20,12 +20,11 @@ use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\Forks;
 use BitWasp\Bitcoin\Node\Index\Validation\ScriptValidation;
 use BitWasp\Bitcoin\Node\Serializer\Block\CachingBlockSerializer;
-use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingTransactionSerializer;
 use BitWasp\Bitcoin\Script\Interpreter\InterpreterInterface;
 use BitWasp\Bitcoin\Serializer\Block\BlockHeaderSerializer;
 use BitWasp\Bitcoin\Serializer\Block\BlockSerializer;
-use BitWasp\Bitcoin\Serializer\Transaction\TransactionInputSerializer;
+use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializerInterface;
 use BitWasp\Bitcoin\Transaction\OutPoint;
@@ -258,10 +257,9 @@ class Blocks extends EventEmitter
         $hash = $block->getHeader()->getHash();
         $index = $headers->accept($hash, $block->getHeader(), true);
 
-        $outpointSerializer = new CachingOutPointSerializer();
-        $txSerializer = new CachingTransactionSerializer(new TransactionInputSerializer($outpointSerializer));
+        $outpointSerializer = new OutPointSerializer();
+        $txSerializer = new CachingTransactionSerializer();
         $blockSerializer = new CachingBlockSerializer($this->math, new BlockHeaderSerializer(), $txSerializer);
-
         $utxoSet = new UtxoSet($this->db, $outpointSerializer);
         $blockData = $this->prepareBatch($block, $txSerializer, $utxoSet);
 
@@ -280,9 +278,8 @@ class Blocks extends EventEmitter
 
         $chainView->blocks()->updateTip($index);
         $forks->next($index);
-
         $this->emit('block', [$index, $block, $blockData]);
-        print_r($outpointSerializer->stats());
+
         return $index;
     }
 }
