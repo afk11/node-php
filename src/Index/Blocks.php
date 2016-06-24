@@ -211,7 +211,7 @@ class Blocks extends EventEmitter
      * @param BlockData $blockData
      * @param bool $checkSignatures
      * @param bool $flags
-     * @param $height
+     * @param int $height
      */
     public function checkBlockData(BlockInterface $block, BlockData $blockData, $checkSignatures, $flags, $height)
     {

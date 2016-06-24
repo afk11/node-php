@@ -411,7 +411,11 @@ class Db implements DbInterface
     public function insertBlock(BufferInterface $blockHash, BlockInterface $block, BlockSerializerInterface $blockSerializer)
     {
         // Insert the block header ID
-        $this->insertBlockStmt->execute(['hash' => $blockHash->getBinary(), 'block' => $blockSerializer->serialize($block)->getBinary()]);
+        $this->insertBlockStmt->execute([
+            'hash' => $blockHash->getBinary(),
+            //'block' => $blockSerializer->serialize($block)->getBinary()
+        ]);
+
         return $this->dbh->lastInsertId();
     }
 
@@ -884,6 +888,24 @@ WHERE tip.header_id = (
         }
 
         $query = implode(" UNION ", $list);
+        return $query;
+    }
+
+    /**
+     * @param OutPointSerializerInterface $serializer
+     * @param array $outpoints
+     * @param array $values
+     * @return string
+     */
+    public function selectUtxoByOutpoint2(OutPointSerializerInterface $serializer, array $outpoints, array & $values)
+    {
+        $list = [];
+        foreach ($outpoints as $v => $outpoint) {
+            $values[] = $serializer->serialize($outpoint)->getBinary();
+            $list[] = "?";
+        }
+
+        $query = "SELECT * from utxo where hashKey IN = (" . implode(", ", $list) . ")";
         return $query;
     }
 
