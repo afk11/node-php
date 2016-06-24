@@ -413,7 +413,7 @@ class Db implements DbInterface
         // Insert the block header ID
         $this->insertBlockStmt->execute([
             'hash' => $blockHash->getBinary(),
-            '',//'block' => $blockSerializer->serialize($block)->getBinary()
+            'block' => '',//'block' => $blockSerializer->serialize($block)->getBinary()
         ]);
 
         return $this->dbh->lastInsertId();
