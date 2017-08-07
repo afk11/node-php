@@ -41,7 +41,7 @@ class BlockRequest
         $nInFlight = count($this->inFlight);
 
         $request = [];
-        for ($i = $startHeight; $i < $stopHeight && $nInFlight < self::MAX_IN_FLIGHT; $i++) {
+        for ($i = $startHeight; $i <= $stopHeight && $nInFlight < self::MAX_IN_FLIGHT; $i++) {
             $request[] = Inventory::block($headerChain->getHashFromHeight($i));
             $nInFlight++;
         }
