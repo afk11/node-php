@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS `blockIndex` (
   `header_id` int(19) NOT NULL,
   `status` int(8) NOT NULL,
   `size_bytes` INT(11) UNSIGNED NOT NULL,
+  `fees` BIGINT(20) UNSIGNED DEFAULT 0,
+  `sigops` INT(11) UNSIGNED DEFAULT 0,
   `numtx` INT(11) UNSIGNED NOT NULL,
   `block` longblob NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;

@@ -2,7 +2,6 @@
 
 namespace BitWasp\Bitcoin\Node\Index;
 
-use BitWasp\Bitcoin\Bitcoin;
 use BitWasp\Bitcoin\Block\BlockInterface;
 use BitWasp\Bitcoin\Crypto\EcAdapter\Adapter\EcAdapterInterface;
 use BitWasp\Bitcoin\Crypto\Hash;
@@ -25,10 +24,8 @@ use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingOutPointSerializer;
 use BitWasp\Bitcoin\Node\Serializer\Transaction\CachingTransactionSerializer;
 use BitWasp\Bitcoin\Script\Interpreter\InterpreterInterface;
 use BitWasp\Bitcoin\Serializer\Block\BlockHeaderSerializer;
-use BitWasp\Bitcoin\Serializer\Block\BlockSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionInputSerializer;
-use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializer;
 use BitWasp\Bitcoin\Serializer\Transaction\TransactionSerializerInterface;
 use BitWasp\Bitcoin\Transaction\OutPoint;
 use BitWasp\Bitcoin\Utxo\Utxo;
@@ -109,8 +106,7 @@ class Blocks extends EventEmitter
         try {
             $this->db->fetchBlock($hash);
         } catch (\Exception $e) {
-            echo $e->getMessage().PHP_EOL;
-            $this->db->insertBlock($index->getHash(), $genesisBlock, new BlockSerializer(Bitcoin::getMath(), new BlockHeaderSerializer(), new TransactionSerializer()), BlockStatus::VALIDATED);
+            $this->db->insertGenesisBlock($index->getHash(), $genesisBlock);
         }
     }
 
@@ -365,7 +361,7 @@ class Blocks extends EventEmitter
         $sql = ['start' => microtime(true), 'end' => null];
         $this->db->transaction(function () use ($index, $utxoSet, $blockData) {
             $utxoSet->applyBlock($blockData);
-            $this->db->updateBlockStatus($index, BlockStatus::VALIDATED);
+            $this->db->updateBlockStatus($index, BlockStatus::VALIDATED, $blockData->nSigOps, gmp_strval($blockData->nFees, 10));
         });
         $sql['end'] = microtime(true);
 

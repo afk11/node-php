@@ -153,11 +153,20 @@ interface DbInterface
     public function insertBlock(BufferInterface $hash, BlockInterface $block, BlockSerializerInterface $blockSerializer, $status);
 
     /**
-     * @param BlockIndexInterface $index
-     * @param $status
-     * @return mixed
+     * @param BufferInterface $hash
+     * @param BlockInterface $block
+     * @return int|string
      */
-    public function updateBlockStatus(BlockIndexInterface $index, $status);
+    public function insertGenesisBlock(BufferInterface $hash, BlockInterface $block);
+
+    /**
+     * @param BlockIndexInterface $index
+     * @param int $status
+     * @param int $sigops
+     * @param int $fees
+     * @return bool
+     */
+    public function updateBlockStatus(BlockIndexInterface $index, $status, $sigops, $fees);
 
     /**
      * Here, we return max 2000 headers following $hash.

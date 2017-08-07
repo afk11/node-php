@@ -14,6 +14,7 @@ use BitWasp\Bitcoin\Node\Chain\ChainSegment;
 use BitWasp\Bitcoin\Node\Chain\ChainViewInterface;
 use BitWasp\Bitcoin\Node\Chain\DbUtxo;
 use BitWasp\Bitcoin\Node\HashStorage;
+use BitWasp\Bitcoin\Node\Index\BlockStatus;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockAcceptData;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\HeadersBatch;
@@ -148,11 +149,6 @@ class Db implements DbInterface
     /**
      * @var \PDOStatement
      */
-    private $insertToBlockIndexStmt;
-
-    /**
-     * @var \PDOStatement
-     */
     private $loadChainByCoord;
 
     /**
@@ -206,7 +202,10 @@ class Db implements DbInterface
         $this->insertBlockStmt = $this->dbh->prepare('
 INSERT INTO blockIndex (status, block, size_bytes, numtx, header_id) 
 values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WHERE h.hash = :hash))');
-        $this->updateBlockStatusStmt = $this->dbh->prepare('UPDATE blockIndex SET status = :status WHERE header_id=(SELECT h.id FROM headerIndex h WHERE h.hash = :hash)');
+        $this->updateBlockStatusStmt = $this->dbh->prepare('
+                UPDATE blockIndex 
+                SET status = :status, sigops = :sigops, fees = :fees 
+                WHERE header_id=(SELECT h.id FROM headerIndex h WHERE h.hash = :hash)');
 
         $this->fetchIndexIdStmt = $this->dbh->prepare('
                SELECT     i.*
@@ -399,12 +398,21 @@ values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WH
         throw new \RuntimeException('Failed to update insert Genesis block index!');
     }
 
-    public function updateBlockStatus(BlockIndexInterface $index, $status)
+    /**
+     * @param BlockIndexInterface $index
+     * @param int $status
+     * @param int $sigops
+     * @param int $fee
+     * @return bool
+     */
+    public function updateBlockStatus(BlockIndexInterface $index, $status, $sigops, $fee)
     {
         // Insert the block header ID
         return $this->updateBlockStatusStmt->execute([
             'hash' => $index->getHash()->getBinary(),
             'status' => $status,
+            'sigops' => $sigops,
+            'fees' => $fee,
         ]);
     }
 
@@ -423,6 +431,33 @@ values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WH
         $acceptData->numTx = $nTx;
         $acceptData->size = $serializedBlock->getSize();
         return $this->insertBlockRaw($blockHash, $serializedBlock, $acceptData, $status);
+    }
+
+    /**
+     * @param BufferInterface $blockHash
+     * @param BlockInterface $block
+     * @return string
+     */
+    public function insertGenesisBlock(BufferInterface $blockHash, BlockInterface $block)
+    {
+        $statement = $this->dbh->prepare('
+              INSERT INTO blockIndex (status, fees, sigops, numtx, block, size_bytes, header_id) 
+              values (:status, :fees, :sigops, :numtx, :block, :size_bytes, (select h.id FROM headerIndex h WHERE h.hash = :hash))');
+
+        $serialized = $block->getBuffer();
+        if ($statement->execute([
+            'status' => BlockStatus::VALIDATED,
+            'fees' => 0,
+            'sigops' => 0,
+            'numtx' => 0,
+            'size_bytes' => $serialized->getSize(),
+            'block' => $serialized->getBinary(),
+            'hash' => $blockHash->getBinary(),
+        ])) {
+            return $this->dbh->lastInsertId();
+        }
+
+        throw new \RuntimeException("Failed to insert block to database");
     }
 
     /**

@@ -73,12 +73,14 @@ class DebugDb implements DbInterface
     /**
      * @param BlockIndexInterface $index
      * @param int $status
-     * @return int
+     * @param int $sigops
+     * @param int $fees
+     * @return bool
      */
-    public function updateBlockStatus(BlockIndexInterface $index, $status)
+    public function updateBlockStatus(BlockIndexInterface $index, $status, $sigops, $fees)
     {
         echo __FUNCTION__ . PHP_EOL;
-        return $this->db->updateBlockStatus($index, $status);
+        return $this->db->updateBlockStatus($index, $status, $sigops, $fees);
     }
 
     /**
@@ -92,6 +94,17 @@ class DebugDb implements DbInterface
     {
         echo __FUNCTION__ . PHP_EOL;
         return $this->db->insertBlockRaw($blockHash, $block, $acceptData, $status);
+    }
+
+    /**
+     * @param BufferInterface $hash
+     * @param BlockInterface $block
+     * @return int|string
+     */
+    public function insertGenesisBlock(BufferInterface $hash, BlockInterface $block)
+    {
+        echo __FUNCTION__ . PHP_EOL;
+        return $this->db->insertGenesisBlock($hash, $block);
     }
 
     /**
