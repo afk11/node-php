@@ -332,6 +332,7 @@ class Blocks extends EventEmitter
      * @param BlockIndexInterface $index
      * @param BlockInterface $block
      * @param HeaderChainViewInterface $chainView
+     * @param bool $checkOnly
      * @return BlockIndexInterface
      */
     public function connect(BlockIndexInterface $index, BlockInterface $block, HeaderChainViewInterface $chainView, $checkOnly = false)
@@ -361,7 +362,7 @@ class Blocks extends EventEmitter
         $sql = ['start' => microtime(true), 'end' => null];
         $this->db->transaction(function () use ($index, $utxoSet, $blockData) {
             $utxoSet->applyBlock($blockData);
-            $this->db->updateBlockStatus($index, BlockStatus::VALIDATED, $blockData->nSigOps, gmp_strval($blockData->nFees, 10));
+            $this->db->updateValidatedBlock($index, $blockData);
         });
         $sql['end'] = microtime(true);
 

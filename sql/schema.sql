@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS `blockIndex` (
   `size_bytes` INT(11) UNSIGNED NOT NULL,
   `fees` BIGINT(20) UNSIGNED DEFAULT 0,
   `sigops` INT(11) UNSIGNED DEFAULT 0,
+  `utxos_created` INT(11) UNSIGNED DEFAULT 0,
+  `utxos_destroyed` INT(11) UNSIGNED DEFAULT 0,
   `numtx` INT(11) UNSIGNED NOT NULL,
   `block` longblob NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;

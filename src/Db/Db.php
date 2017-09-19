@@ -204,7 +204,11 @@ INSERT INTO blockIndex (status, block, size_bytes, numtx, header_id)
 values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WHERE h.hash = :hash))');
         $this->updateBlockStatusStmt = $this->dbh->prepare('
                 UPDATE blockIndex 
-                SET status = :status, sigops = :sigops, fees = :fees 
+                SET     status = :status, 
+                        sigops = :sigops,
+                        utxos_created = :utxos_created,
+                        utxos_destroyed = :utxos_destroyed, 
+                        fees = :fees  
                 WHERE header_id=(SELECT h.id FROM headerIndex h WHERE h.hash = :hash)');
 
         $this->fetchIndexIdStmt = $this->dbh->prepare('
@@ -400,19 +404,21 @@ values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WH
 
     /**
      * @param BlockIndexInterface $index
-     * @param int $status
-     * @param int $sigops
-     * @param int $fee
+     * @param BlockData $blockData
      * @return bool
      */
-    public function updateBlockStatus(BlockIndexInterface $index, $status, $sigops, $fee)
+    public function updateValidatedBlock(BlockIndexInterface $index, BlockData $blockData)
     {
         // Insert the block header ID
+        $created = count($blockData->remainingNew);
+        $destroyed = count($blockData->requiredOutpoints);
         return $this->updateBlockStatusStmt->execute([
             'hash' => $index->getHash()->getBinary(),
-            'status' => $status,
-            'sigops' => $sigops,
-            'fees' => $fee,
+            'status' => BlockStatus::VALIDATED,
+            'sigops' => $blockData->nSigOps,
+            'fees' => gmp_strval($blockData->nFees, 10),
+            'utxos_created' => $created,
+            'utxos_destroyed' => $destroyed,
         ]);
     }
 
@@ -441,14 +447,12 @@ values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WH
     public function insertGenesisBlock(BufferInterface $blockHash, BlockInterface $block)
     {
         $statement = $this->dbh->prepare('
-              INSERT INTO blockIndex (status, fees, sigops, numtx, block, size_bytes, header_id) 
-              values (:status, :fees, :sigops, :numtx, :block, :size_bytes, (select h.id FROM headerIndex h WHERE h.hash = :hash))');
+              INSERT INTO blockIndex (status, numtx, block, size_bytes, header_id) 
+              values (:status, :numtx, :block, :size_bytes, (select h.id FROM headerIndex h WHERE h.hash = :hash))');
 
         $serialized = $block->getBuffer();
         if ($statement->execute([
             'status' => BlockStatus::VALIDATED,
-            'fees' => 0,
-            'sigops' => 0,
             'numtx' => 0,
             'size_bytes' => $serialized->getSize(),
             'block' => $serialized->getBinary(),

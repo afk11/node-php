@@ -11,7 +11,6 @@ use BitWasp\Bitcoin\Node\HashStorage;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockAcceptData;
 use BitWasp\Bitcoin\Node\Index\Validation\BlockData;
 use BitWasp\Bitcoin\Node\Index\Validation\HeadersBatch;
-use BitWasp\Bitcoin\Serializer\Block\BlockSerializerInterface;
 use BitWasp\Bitcoin\Serializer\Transaction\OutPointSerializerInterface;
 use BitWasp\Bitcoin\Transaction\TransactionInterface;
 use BitWasp\Buffertools\BufferInterface;
@@ -72,15 +71,13 @@ class DebugDb implements DbInterface
 
     /**
      * @param BlockIndexInterface $index
-     * @param int $status
-     * @param int $sigops
-     * @param int $fees
+     * @param BlockData $blockData
      * @return bool
      */
-    public function updateBlockStatus(BlockIndexInterface $index, $status, $sigops, $fees)
+    public function updateValidatedBlock(BlockIndexInterface $index, BlockData $blockData)
     {
         echo __FUNCTION__ . PHP_EOL;
-        return $this->db->updateBlockStatus($index, $status, $sigops, $fees);
+        return $this->db->updateValidatedBlock($index, $blockData);
     }
 
     /**
@@ -105,19 +102,6 @@ class DebugDb implements DbInterface
     {
         echo __FUNCTION__ . PHP_EOL;
         return $this->db->insertGenesisBlock($hash, $block);
-    }
-
-    /**
-     * @param BufferInterface $hash
-     * @param BlockInterface $block
-     * @param BlockSerializerInterface $blockSerializer
-     * @param int $status
-     * @return int
-     */
-    public function insertBlock(BufferInterface $hash, BlockInterface $block, BlockSerializerInterface $blockSerializer, $status)
-    {
-        echo __FUNCTION__ . PHP_EOL;
-        return $this->db->insertBlock($hash, $block, $blockSerializer, $status);
     }
 
     /**
