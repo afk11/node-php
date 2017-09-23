@@ -5,6 +5,7 @@ namespace BitWasp\Bitcoin\Node\Services;
 use BitWasp\Bitcoin\Block\BlockInterface;
 use BitWasp\Bitcoin\Node\Chain\BlockIndexInterface;
 use BitWasp\Bitcoin\Node\Chain\HeaderChainViewInterface;
+use BitWasp\Bitcoin\Node\Index\UtxoSet;
 use BitWasp\Bitcoin\Node\NodeInterface;
 use Evenement\EventEmitter;
 use Pimple\Container;
@@ -36,7 +37,7 @@ class ValidationService extends EventEmitter
 
         $this->node->blocks()->on('block.accept', function ($chain, $index, $block) {
             $this->loop->futureTick(function () use ($chain, $index, $block) {
-                $this->connectBlock($chain, $index, $block);
+                $this->connectBlock($chain, $this->node->coins(), $index, $block);
             });
         });
 
@@ -65,7 +66,7 @@ class ValidationService extends EventEmitter
                     $access = $this->node->chains()->access($chainView);
                     $index = $access->fetchIndex($hash);
                     $block = $access->fetchBlock($hash);
-                    $this->connectBlock($chainView, $index, $block);
+                    $this->connectBlock($chainView, $this->node->coins(), $index, $block);
                     $this->catchUp($chainView);
                 } catch (\Exception $e) {
                     echo "problem catching up: {$e->getMessage()}\n";
@@ -81,7 +82,7 @@ class ValidationService extends EventEmitter
      * @param BlockInterface $block
      * @return void
      */
-    public function connectBlock(HeaderChainViewInterface $chainView, BlockIndexInterface $index, BlockInterface $block)
+    public function connectBlock(HeaderChainViewInterface $chainView, UtxoSet $txoutset, BlockIndexInterface $index, BlockInterface $block)
     {
         if (!self::ENABLED) {
             return;
@@ -99,7 +100,7 @@ class ValidationService extends EventEmitter
                 return;
             }
 
-            $this->node->blocks()->connect($index, $block, $chainView);
+            $this->node->blocks()->connect($index, $block, $chainView, false, $txoutset);
         } catch (\Exception $e) {
             echo $e->getMessage().PHP_EOL;
             echo $e->getTraceAsString().PHP_EOL;

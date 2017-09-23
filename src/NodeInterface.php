@@ -26,6 +26,11 @@ interface NodeInterface extends EventEmitterInterface
     public function transactions();
 
     /**
+     * @return \BitWasp\Bitcoin\Node\Index\UtxoSet
+     */
+    public function coins();
+
+    /**
      * @return ChainView
      */
     public function chain();

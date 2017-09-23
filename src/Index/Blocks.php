@@ -195,14 +195,15 @@ class Blocks extends EventEmitter
      * @param UtxoSet $utxoSet
      * @return BlockData
      */
-    public function prepareBatch(BlockInterface $block, TransactionSerializerInterface $txSerializer, OutPointSerializerInterface $oSerializer, UtxoSet $utxoSet)
+    public function prepareBatch(BlockInterface $block, TransactionSerializerInterface $txSerializer, OutPointSerializerInterface $oSerializer, UtxoSet $utxoSet, \BitWasp\Bitcoin\Node\Index\UtxoSet $txoutset)
     {
         $parseBegin = microtime(true);
         $blockData = $this->parseUtxos($block, $txSerializer, $oSerializer);
         $parseDiff = microtime(true)-$parseBegin;
         $selectBegin = microtime(true);
         $blockData->utxoView = new UtxoView(array_merge(
-            $utxoSet->fetchView($blockData),
+            $txoutset->fetchView($blockData),
+            //$utxoSet->fetchView($blockData),
             $blockData->parsedUtxos
         ));
         $selectDiff = microtime(true)-$selectBegin;
@@ -335,7 +336,7 @@ class Blocks extends EventEmitter
      * @param bool $checkOnly
      * @return BlockIndexInterface
      */
-    public function connect(BlockIndexInterface $index, BlockInterface $block, HeaderChainViewInterface $chainView, $checkOnly = false)
+    public function connect(BlockIndexInterface $index, BlockInterface $block, HeaderChainViewInterface $chainView, $checkOnly = false, \BitWasp\Bitcoin\Node\Index\UtxoSet $txoutset)
     {
         $start = microtime(true);
         $init = ['start' => microtime(true), 'end' => null];
@@ -352,7 +353,7 @@ class Blocks extends EventEmitter
         $check['end'] = microtime(true);
 
         $utxoSet = new UtxoSet($this->db, $outpointSerializer);
-        $blockData = $this->prepareBatch($block, $txSerializer, $outpointSerializer, $utxoSet);
+        $blockData = $this->prepareBatch($block, $txSerializer, $outpointSerializer, $utxoSet, $txoutset);
         list ($wasNext, $forks) = $this->prepareForks($chainView, $index);
 
         $data = ['start' => microtime(true), 'end' => null];
@@ -360,8 +361,9 @@ class Blocks extends EventEmitter
         $data['end'] = microtime(true);
 
         $sql = ['start' => microtime(true), 'end' => null];
-        $this->db->transaction(function () use ($index, $utxoSet, $blockData) {
-            $utxoSet->applyBlock($blockData);
+        $this->db->transaction(function () use ($index, $utxoSet, $blockData, $txoutset) {
+            $txoutset->applyBlock($blockData);
+            //$utxoSet->applyBlock($blockData);
             $this->db->updateValidatedBlock($index, $blockData);
         });
         $sql['end'] = microtime(true);

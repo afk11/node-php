@@ -57,6 +57,7 @@ class BitcoinNode extends EventEmitter implements NodeInterface
         $this->headers = new Index\Headers($db, $adapter, $this->chains, $consensus, $pow);
         $this->blocks = new Index\Blocks($db, $config, $adapter, $this->chains, $consensus);
         $this->transactions = new Index\Transactions($db);
+        $this->coins = new Index\UtxoSet($config);
 
         $genesis = $params->getGenesisBlock();
         $this->headers->init($genesis->getHeader());
@@ -69,6 +70,7 @@ class BitcoinNode extends EventEmitter implements NodeInterface
         }
 
         $this->chains->initialize($this->db);
+        $this->coins->init($this->chain());
     }
 
     /**
@@ -118,5 +120,10 @@ class BitcoinNode extends EventEmitter implements NodeInterface
     public function chains()
     {
         return $this->chains;
+    }
+
+    public function coins()
+    {
+        return $this->coins;
     }
 }
