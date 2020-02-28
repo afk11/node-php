@@ -2,13 +2,12 @@
 
 namespace BitWasp\Bitcoin\Node\Console\Commands;
 
-use BitWasp\Bitcoin\Bitcoin;
-use BitWasp\Bitcoin\Chain\Params;
 use BitWasp\Bitcoin\Node\BitcoinNode;
 use BitWasp\Bitcoin\Node\Config\ConfigLoader;
 use BitWasp\Bitcoin\Node\Db\Db;
 use BitWasp\Bitcoin\Node\Db\DbInterface;
 use BitWasp\Bitcoin\Node\Db\DebugDb;
+use BitWasp\Bitcoin\Node\Network\Network;
 use BitWasp\Bitcoin\Node\NodeInterface;
 use BitWasp\Bitcoin\Node\Services\ConfigServiceProvider;
 use BitWasp\Bitcoin\Node\Services\DbServiceProvider;
@@ -73,12 +72,10 @@ class StartCommand extends AbstractCommand
             posix_setsid();
         }
 
-        $math = Bitcoin::getMath();
-        $params = new Params($math);
+        $network = Network::load($config->getItem('network', 'name', 'bitcoin'));
         $loop = \React\EventLoop\Factory::create();
-
         $db = new DebugDb(Db::create($config));
-        $node = new BitcoinNode($config, $params, $db);
+        $node = new BitcoinNode($config, $network->getChainParams(), $db);
 
         $container = new Container();
         $container['debug'] = function (Container $c) use ($node) {
@@ -86,7 +83,7 @@ class StartCommand extends AbstractCommand
             return new ZmqDebug($node, $context);
         };
 
-        $this->setupServices($container, $node, $loop, $config, $db);
+        $this->setupServices($container, $node, $loop, $network, $config, $db);
         $loop->run();
 
         return 0;
@@ -96,10 +93,12 @@ class StartCommand extends AbstractCommand
      * @param Container $container
      * @param NodeInterface $node
      * @param LoopInterface $loop
+     * @param Network $networkCfg
      * @param ConfigProviderInterface $config
      * @param DbInterface $db
+     * @throws \Exception
      */
-    public function setupServices(Container $container, NodeInterface $node, LoopInterface $loop, ConfigProviderInterface $config, DbInterface $db)
+    public function setupServices(Container $container, NodeInterface $node, LoopInterface $loop, Network $networkCfg, ConfigProviderInterface $config, DbInterface $db)
     {
         // Configure commands exposed by UserControl & WebSocket
         /** @var CommandInterface[] $basicCommands */
@@ -120,7 +119,7 @@ class StartCommand extends AbstractCommand
         $services = [
             new LoopServiceProvider($loop),
             new ConfigServiceProvider($config),
-            new NetworkServiceProvider(),
+            new NetworkServiceProvider($networkCfg),
             new DbServiceProvider($db),
             new ZmqServiceProvider(),
             new ValidationServiceProvider($node),

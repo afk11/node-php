@@ -1,8 +1,9 @@
 <?php
 
-namespace BitWasp\Bitcoin\Networking\Settings;
+namespace BitWasp\Bitcoin\Node\Network;
 
 use BitWasp\Bitcoin\Networking\DnsSeeds\DnsSeedList;
+use BitWasp\Bitcoin\Networking\Settings\NetworkSettings;
 
 class RegtestSettings extends NetworkSettings
 {
@@ -14,3 +15,4 @@ class RegtestSettings extends NetworkSettings
         ;
     }
 }
+

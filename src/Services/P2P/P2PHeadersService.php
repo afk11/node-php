@@ -62,6 +62,7 @@ class P2PHeadersService extends EventEmitter
 
         try {
             $vHeaders = $headersMsg->getHeaders();
+
             $batch = $headers->prepareBatch($vHeaders);
             $count = count($batch->getIndices());
 

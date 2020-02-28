@@ -2,8 +2,6 @@
 
 namespace BitWasp\Bitcoin\Node\Services\P2P;
 
-use BitWasp\Bitcoin\Bitcoin;
-use BitWasp\Bitcoin\Networking\Factory;
 use BitWasp\Bitcoin\Networking\Ip\Ipv4;
 use BitWasp\Bitcoin\Networking\Message;
 use BitWasp\Bitcoin\Networking\Messages\Addr;
@@ -33,6 +31,7 @@ use BitWasp\Bitcoin\Networking\Peer\Manager;
 use BitWasp\Bitcoin\Networking\Peer\Peer;
 use BitWasp\Bitcoin\Networking\Protocol;
 use BitWasp\Bitcoin\Networking\Services;
+use BitWasp\Bitcoin\Networking\Structure\NetworkAddress;
 use BitWasp\Bitcoin\Networking\Structure\NetworkAddressInterface;
 use BitWasp\Bitcoin\Node\Services\Debug\DebugInterface;
 use BitWasp\Bitcoin\Node\Services\P2P\State\Peers;
@@ -76,6 +75,11 @@ class P2PService extends EventEmitter
     private $locator;
 
     /**
+     * @var NetworkAddressInterface[]
+     */
+    private $connectList = [];
+
+    /**
      * P2P constructor.
      * @param Container $container
      */
@@ -101,9 +105,14 @@ class P2PService extends EventEmitter
         $this->manager = $factory->getManager($this->connector);
         $this->locator = $factory->getLocator();
 
+        $this->connectList = [];
+        foreach ($this->config->getItem('config', 'connect', []) as $connectIp) {
+            $this->connectList[] = new NetworkAddress(1, new Ipv4($connectIp), $factory->getSettings()->getDefaultP2PPort());
+        }
+
         // Setup listener if required
         if ($this->config->getItem('config', 'listen', '0')) {
-            $listener = $factory->getListener($params, $factory->getAddress(new Ipv4('0.0.0.0', $factory->getSettings()->getDefaultP2PPort())));
+            $listener = $factory->getListener($params, $factory->getAddress(new Ipv4('0.0.0.0'), $factory->getSettings()->getDefaultP2PPort()));
             $this->manager->registerListener($listener);
         }
 
@@ -189,20 +198,46 @@ class P2PService extends EventEmitter
      */
     public function run()
     {
-        return $this
-            ->locator
-            ->queryDnsSeeds(1)
-            ->then(function () {
-                for ($i = 0; $i < 1; $i++) {
-                    $this->connectNextPeer();
-                }
-            });
+        return $this->connectNextPeer();
     }
 
     /**
      * @return \React\Promise\PromiseInterface|static
      */
     public function connectNextPeer()
+    {
+        if (count($this->connectList)) {
+            echo "connect with list\n";
+            return $this->connectWithConnectList();
+        }
+
+        return $this->connectWithDnsSeeds();
+    }
+
+    public function connectToHost(NetworkAddressInterface $host)
+    {
+        $goodPeer = new Deferred();
+
+        $this
+            ->connector
+            ->connect($host)
+            ->then(function (Peer $peer) use ($goodPeer) {
+                $check = $this->checkAcceptablePeer($peer);
+
+                if (false === $check) {
+                    $peer->close();
+                    $goodPeer->reject();
+                } else {
+                    $goodPeer->resolve($peer);
+                }
+            }, function () use ($goodPeer) {
+                $goodPeer->reject();
+            });
+
+        return $goodPeer->promise();
+    }
+
+    public function connectWithDnsSeeds()
     {
         $addr = new Deferred();
         try {
@@ -216,30 +251,39 @@ class P2PService extends EventEmitter
         return $addr
             ->promise()
             ->then(function (NetworkAddressInterface $host) {
-                $goodPeer = new Deferred();
-
-                $this
-                    ->connector
-                    ->connect($host)
-                    ->then(function (Peer $peer) use ($goodPeer) {
-                        $check = $this->checkAcceptablePeer($peer);
-
-                        if (false === $check) {
-                            $peer->close();
-                            $goodPeer->reject();
-                        } else {
-                            $goodPeer->resolve($peer);
-                        }
-                    }, function () use ($goodPeer) {
-                        $goodPeer->reject();
-                    });
-
-                return $goodPeer->promise();
+                return $this->connectToHost($host);
+            }, function () {
+                return $this->connectNextPeer();
             })
             ->then(function (Peer $peer) {
                 $this->manager->registerOutboundPeer($peer);
             }, function () {
                 return $this->connectNextPeer();
+            });
+    }
+
+    public function connectWithConnectList()
+    {
+        if (empty($this->connectList)) {
+            throw new \Exception("No connect list peers");
+        }
+
+        $addr = array_pop($this->connectList);
+        echo "connect to list host\n";
+        echo "ip".($addr->getIp()->getHost()).PHP_EOL;
+        echo "port".($addr->getPort()).PHP_EOL;
+
+        return $this->connectToHost($addr)
+            ->then(function (Peer $peer) {
+                echo "registered\n";
+                $this->manager->registerOutboundPeer($peer);
+            }, function (\Exception $e) {
+                echo "error\n";
+                if (count($this->connectList) > 0) {
+                    return $this->connectWithConnectList();
+                }
+
+                throw new \Exception("No connect list peers");
             });
     }
 

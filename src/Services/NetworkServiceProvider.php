@@ -2,48 +2,33 @@
 
 namespace BitWasp\Bitcoin\Node\Services;
 
-use BitWasp\Bitcoin\Bitcoin;
-use BitWasp\Bitcoin\Chain\Params;
-use BitWasp\Bitcoin\Network\NetworkFactory;
-use BitWasp\Bitcoin\Networking\Settings\MainnetSettings;
-use BitWasp\Bitcoin\Networking\Settings\RegtestSettings;
-use BitWasp\Bitcoin\Node\Params\RegtestParams;
-use Packaged\Config\ConfigProviderInterface;
+use BitWasp\Bitcoin\Node\Network\Network;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
 
 class NetworkServiceProvider implements ServiceProviderInterface
 {
     /**
+     * @var Network
+     */
+    private $network;
+
+    /**
+     * NetworkServiceProvider constructor.
+     * @param Network $network
+     */
+    public function __construct(Network $network)
+    {
+        $this->network = $network;
+    }
+
+    /**
      * @param Container $container
      */
     public function register(Container $container)
     {
-        /** @var ConfigProviderInterface $config */
-        $config = $container['config'];
-
-        $network = $config->getItem('network', 'name', null);
-        if (null === $network) {
-            $network = 'bitcoin-mainnet';
-        }
-
-        switch ($network) {
-            default:
-                throw new \RuntimeException("Unsupported network: {$network}");
-            case 'bitcoin-mainnet':
-                $network = NetworkFactory::bitcoin();
-                $params = new Params(Bitcoin::getMath());
-                $p2pSettings = new MainnetSettings();
-                break;
-            case 'bitcoin-regtest':
-                $network = NetworkFactory::bitcoinRegtest();
-                $params = new RegtestParams(Bitcoin::getMath());
-                $p2pSettings = new RegtestSettings();
-                break;
-        }
-
-        $container['network.params.addr'] = $network;
-        $container['network.params.chain'] = $params;
-        $container['network.params.p2p'] = $p2pSettings;
+        $container['network.params.addr'] = $this->network->getVchParams();
+        $container['network.params.chain'] = $this->network->getChainParams();
+        $container['network.params.p2p'] = $this->network->getNetworkParams();
     }
 }

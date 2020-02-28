@@ -339,12 +339,15 @@ class ChainContainer extends EventEmitter implements ChainsInterface
     public function isKnownHeader(BufferInterface $buffer)
     {
         $binary = $buffer->getBinary();
+        echo "isKnownHeader: {$buffer->getHex()}\n";
         foreach (array_keys($this->segments) as $segment) {
             if (isset($this->hashStorage[$segment][$binary])) {
+                echo "^ yes\n";
                 return true;
             }
         }
 
+        echo "^ no\n";
         return false;
     }
 

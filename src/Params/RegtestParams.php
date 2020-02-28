@@ -81,12 +81,12 @@ class RegtestParams extends Params
     public function getGenesisBlockHeader()
     {
         return new BlockHeader(
-            '1',
-            Buffer::hex('00', 32),
+            1,
+            new Buffer('', 32),
             Buffer::hex('4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b', 32),
-            '1296688602',
-            Buffer::hex('207fffff', 4, $this->math),
-            '2'
+            1296688602,
+            0x207fffff,
+            2
         );
     }
 

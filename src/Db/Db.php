@@ -287,7 +287,6 @@ values (:status, :block, :size_bytes, :numtx, (select h.id FROM headerIndex h WH
         return $ancestorRow['segment'];
     }
 
-
     public function getPdo()
     {
         return $this->dbh;
